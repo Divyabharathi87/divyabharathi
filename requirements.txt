@@ -1,9 +1,9 @@
 streamlit
-pandas
-numpy
-matplotlib
-seaborn
 nltk
+seaborn
+matplotlib
 scikit-learn
 wordcloud
 vaderSentiment
+pandas
+numpy
