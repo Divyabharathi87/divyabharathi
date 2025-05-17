@@ -1,8 +1,5 @@
 # app.py
 
-# === INSTALL REQUIRED LIBRARIES (Uncomment if needed) ===
-# !pip install streamlit nltk seaborn matplotlib scikit-learn wordcloud vaderSentiment
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -20,16 +17,18 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# === DOWNLOAD NLTK RESOURCES ===
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
+# === Ensure NLTK resources are available ===
+for resource in ['punkt', 'stopwords', 'wordnet']:
+    try:
+        nltk.data.find(f'corpora/{resource}' if resource != 'punkt' else f'tokenizers/{resource}')
+    except LookupError:
+        nltk.download(resource)
 
-# === Streamlit Config ===
+# === Streamlit Page Setup ===
 st.set_page_config(page_title="Emotion & Sentiment Analysis", layout="wide")
 st.title("Emotion Detection and Sentiment Analysis of Social Media Text")
 
-# === Sample Dataset ===
+# === Sample Data ===
 data = {
     "text": [
         "I am so happy today!",
@@ -50,7 +49,7 @@ data = {
 }
 df = pd.DataFrame(data)
 
-# === Preprocessing ===
+# === Text Cleaning ===
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
 
@@ -83,7 +82,7 @@ for emotion in df['emotion'].unique():
     ax_wc.axis('off')
     st.pyplot(fig_wc)
 
-# === Vectorize & Train Model ===
+# === TF-IDF and Model Training ===
 vectorizer = TfidfVectorizer(max_features=1000)
 X = vectorizer.fit_transform(df['clean_text'])
 y = df['emotion']
@@ -93,12 +92,11 @@ clf = RandomForestClassifier(n_estimators=100, random_state=42)
 clf.fit(X_train, y_train)
 y_pred = clf.predict(X_test)
 
-# === Classification Report ===
+# === Evaluation ===
 st.subheader("Model Performance")
 st.text("Classification Report:")
 st.text(classification_report(y_test, y_pred))
 
-# === Confusion Matrix ===
 cm = confusion_matrix(y_test, y_pred)
 fig_cm, ax_cm = plt.subplots()
 sns.heatmap(cm, annot=True, fmt='d', xticklabels=clf.classes_, yticklabels=clf.classes_, cmap="YlGnBu", ax=ax_cm)
@@ -106,7 +104,7 @@ plt.xlabel('Predicted')
 plt.ylabel('True')
 st.pyplot(fig_cm)
 
-# === VADER Sentiment Analysis ===
+# === VADER Sentiment ===
 analyzer = SentimentIntensityAnalyzer()
 df['vader_score'] = df['clean_text'].apply(lambda x: analyzer.polarity_scores(x)['compound'])
 
@@ -123,19 +121,19 @@ df['vader_sentiment'] = df['vader_score'].apply(vader_sentiment)
 st.subheader("VADER Sentiment Results")
 st.dataframe(df[['text', 'vader_sentiment']])
 
-# === Try It Yourself with Predict Button ===
+# === Prediction UI ===
 st.subheader("Try Your Own Text")
-user_input = st.text_area("Enter a sentence to analyze:", "")
+user_input = st.text_area("Enter text to analyze:")
 
 if st.button("Predict"):
     if user_input.strip() == "":
         st.warning("Please enter some text.")
     else:
         cleaned = clean_text(user_input)
-        vectorized = vectorizer.transform([cleaned])
-        model_pred = clf.predict(vectorized)[0]
+        vec = vectorizer.transform([cleaned])
+        emotion_pred = clf.predict(vec)[0]
         vader_score = analyzer.polarity_scores(cleaned)['compound']
         vader_label = vader_sentiment(vader_score)
 
-        st.markdown(f"**ML-Predicted Emotion:** {model_pred}")
-        st.markdown(f"**VADER Sentiment:** {vader_label} (score: {vader_score:.2f})")
+        st.success(f"**Predicted Emotion:** {emotion_pred}")
+        st.info(f"**VADER Sentiment:** {vader_label} (score: {vader_score:.2f})")
